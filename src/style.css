@@ -1,6 +1,7 @@
 :root {
   --bg: #111214; --panel: #1a1c20; --line: #2a2d33; --text: #e9eaec; --muted: #8b8f98;
   --accent: #d4ff3a; --accent-ink: #111214; --danger: #ff6b5b;
+  --map-primary: #d4ff3a; --map-secondary: #8fa832; --map-body: #3a3d44;
   color-scheme: dark;
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -39,8 +40,8 @@ button:disabled { opacity: 0.35; cursor: default; }
 .bodymap { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .bodymap polygon { cursor: pointer; }
 .dot { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; margin-right: 0.3em; }
-.dot.primary { background: #d4ff3a; }
-.dot.secondary { background: #8fa832; }
+.dot.primary { background: var(--map-primary); }
+.dot.secondary { background: var(--map-secondary); }
 .panel p { margin: 0; }
 
 .grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.8rem; }
@@ -125,3 +126,85 @@ tr.done td:first-child { color: var(--accent); font-weight: 700; }
 .big span { font-size: 0.9rem; font-weight: 600; margin-left: 0.4rem; }
 .big .up { color: var(--accent); }
 .big .down { color: var(--danger); }
+
+select.theme { width: auto; padding: 0.3rem 0.5rem; font-size: 0.85rem; margin-right: auto; }
+
+/* ---------- Manga themes: paper, ink outlines, halftone dots, speed lines ---------- */
+:root[data-theme="saiyan"], :root[data-theme="hunter"] {
+  color-scheme: light;
+  --ink: #141414; --paper: #fffaf0; --text: var(--ink); --line: var(--ink); --panel: #ffffff;
+  --map-body: #d9d4c7; --danger: #d62828;
+}
+:root[data-theme="saiyan"] {
+  --bg: #fff4e0; --accent: #ff7a00; --accent-ink: #141414; --muted: #6b4a2b; --dot: rgba(255, 122, 0, .18);
+  --map-primary: #ff7a00; --map-secondary: #2f5bd8; --hero: #2f5bd8;
+}
+:root[data-theme="hunter"] {
+  --bg: #f1f8ee; --accent: #1f9d55; --accent-ink: #ffffff; --muted: #3f5b46; --dot: rgba(31, 157, 85, .16);
+  --map-primary: #1f9d55; --map-secondary: #e8a317; --hero: #e8a317;
+}
+[data-theme="saiyan"] body, [data-theme="hunter"] body {
+  background: radial-gradient(var(--dot) 1.2px, transparent 1.6px) 0 0 / 9px 9px, var(--bg);
+}
+/* Radiating speed lines behind everything */
+[data-theme="saiyan"] body::before, [data-theme="hunter"] body::before {
+  content: ""; position: fixed; inset: -50%; z-index: -1; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 40%, rgba(0, 0, 0, .045) 0 1.2deg, transparent 1.2deg 7deg);
+}
+[data-theme="saiyan"] main, [data-theme="hunter"] main { position: relative; }
+[data-theme="saiyan"] :is(h1, .brand, nav a, button, .btn, .big, .card strong, .chart-card > a, .exercise-log h2),
+[data-theme="hunter"] :is(h1, .brand, nav a, button, .btn, .big, .card strong, .chart-card > a, .exercise-log h2) {
+  font-family: "Bangers", "Impact", system-ui, sans-serif; letter-spacing: .05em; font-weight: 400;
+}
+[data-theme="saiyan"] h1, [data-theme="hunter"] h1 {
+  font-size: 2.6rem; color: var(--ink); text-shadow: 3px 3px 0 var(--accent), 5px 5px 0 var(--ink); transform: rotate(-1.5deg); transform-origin: left;
+}
+[data-theme="saiyan"] h2, [data-theme="hunter"] h2 { color: var(--ink); }
+[data-theme="saiyan"] .top, [data-theme="hunter"] .top {
+  background: var(--ink); border-bottom: 4px solid var(--accent); backdrop-filter: none;
+}
+[data-theme="saiyan"] .brand, [data-theme="hunter"] .brand { color: var(--accent); font-size: 1.5rem; text-shadow: 2px 2px 0 var(--hero); }
+[data-theme="saiyan"] nav a, [data-theme="hunter"] nav a { color: #f4f4f4; font-size: 1.05rem; border-radius: 4px; }
+[data-theme="saiyan"] nav a.on, [data-theme="hunter"] nav a.on { background: var(--accent); color: var(--accent-ink); box-shadow: 3px 3px 0 var(--hero); }
+[data-theme="saiyan"] .top select.theme, [data-theme="hunter"] .top select.theme { background: var(--ink); color: #f4f4f4; border-color: #555; }
+
+/* Comic panels: thick ink border and hard offset shadow */
+[data-theme="saiyan"] :is(.panel, .card, .list li, .items li, .exercise-log, .history > li, .chart-card, .check),
+[data-theme="hunter"] :is(.panel, .card, .list li, .items li, .exercise-log, .history > li, .chart-card, .check) {
+  border: 2.5px solid var(--ink); border-radius: 4px; box-shadow: 5px 5px 0 var(--ink); background: var(--panel);
+}
+[data-theme="saiyan"] .card:hover, [data-theme="hunter"] .card:hover { border-color: var(--ink); box-shadow: 7px 7px 0 var(--accent); transform: translate(-2px, -2px); }
+[data-theme="saiyan"] .card, [data-theme="hunter"] .card { transition: transform .12s, box-shadow .12s; }
+/* Photos printed like manga pages, colour comes back on hover */
+[data-theme="saiyan"] :is(.card img, .photos img), [data-theme="hunter"] :is(.card img, .photos img) {
+  filter: grayscale(1) contrast(1.25); border-bottom: 2.5px solid var(--ink); transition: filter .2s;
+}
+[data-theme="saiyan"] .card:hover img, [data-theme="hunter"] .card:hover img { filter: none; }
+[data-theme="saiyan"] .photos img, [data-theme="hunter"] .photos img { border: 2.5px solid var(--ink); border-radius: 4px; }
+[data-theme="saiyan"] :is(input, select, button, .btn), [data-theme="hunter"] :is(input, select, button, .btn) {
+  border: 2px solid var(--ink); border-radius: 4px;
+}
+[data-theme="saiyan"] :is(input, select):not(.title), [data-theme="hunter"] :is(input, select):not(.title) { background: #fff; }
+[data-theme="saiyan"] :is(button, .btn), [data-theme="hunter"] :is(button, .btn) { box-shadow: 3px 3px 0 var(--ink); font-size: 1.05rem; }
+[data-theme="saiyan"] :is(button, .btn):active, [data-theme="hunter"] :is(button, .btn):active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+[data-theme="saiyan"] button.ghost, [data-theme="hunter"] button.ghost { background: #fff; color: var(--ink); }
+[data-theme="saiyan"] .tags span, [data-theme="hunter"] .tags span { border: 2px solid var(--ink); color: var(--ink); background: #fff; }
+[data-theme="saiyan"] :is(.gym-link, .ok, .suggest.up, .big .up), [data-theme="hunter"] :is(.gym-link, .ok, .suggest.up, .big .up) { color: var(--ink); }
+[data-theme="saiyan"] .chart polyline, [data-theme="hunter"] .chart polyline { stroke-width: 3; }
+[data-theme="saiyan"] .chart circle, [data-theme="hunter"] .chart circle { stroke: var(--ink); stroke-width: 1.5; }
+
+/* Shout bubbles on progression suggestions */
+[data-theme="saiyan"] .suggest.up::before, [data-theme="hunter"] .suggest.up::before {
+  display: inline-block; margin-right: .5rem; padding: .05rem .5rem; transform: rotate(-3deg);
+  font: 1rem "Bangers", Impact, sans-serif; letter-spacing: .06em;
+  background: var(--accent); color: var(--accent-ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink);
+}
+[data-theme="saiyan"] .suggest.up::before { content: "POWER UP!"; }
+[data-theme="hunter"] .suggest.up::before { content: "LEVEL UP!"; }
+
+@media (max-width: 760px) {
+  .top { flex-wrap: wrap; row-gap: 0.5rem; }
+  .top .brand { display: block; }
+  .top nav { order: 3; width: 100%; justify-content: space-between; }
+  [data-theme="saiyan"] h1, [data-theme="hunter"] h1 { font-size: 2.1rem; }
+}
