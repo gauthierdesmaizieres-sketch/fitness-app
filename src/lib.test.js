@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { MUSCLE_MAP, bodyData, filterExercises, progression, lastSets, muscleFromSlug } from './lib.js'
+import { MUSCLE_MAP, bodyData, filterExercises, progression, lastSets, muscleFromSlug, suggest } from './lib.js'
 
 const exercises = JSON.parse(readFileSync(new URL('./data/exercises.json', import.meta.url)))
 
@@ -29,7 +29,23 @@ test('progression and last sets', () => {
     { date: '2026-01-01', entries: [{ exId: 'a', sets: [{ reps: 5, weight: 50 }] }] },
     { date: '2026-03-01', entries: [{ exId: 'b', sets: [{ reps: 5, weight: 10 }] }] },
   ]
-  assert.deepEqual(progression(sessions, 'a'), [{ date: '2026-01-01', weight: 50 }, { date: '2026-02-01', weight: 65 }])
+  assert.deepEqual(progression(sessions, 'a'), { unit: 'kg', points: [{ date: '2026-01-01', value: 50 }, { date: '2026-02-01', value: 65 }] })
+  assert.deepEqual(progression([{ date: '2026-01-01', entries: [{ exId: 'p', sets: [{ reps: 8, weight: 0 }, { reps: 6, weight: 0 }] }] }], 'p'),
+    { unit: 'reps', points: [{ date: '2026-01-01', value: 8 }] })
   assert.equal(lastSets(sessions, 'a')[1].weight, 65)
   assert.equal(lastSets(sessions, 'z'), undefined)
+})
+
+test('gym filter keeps bodyweight and no-equipment exercises', () => {
+  const r = filterExercises(exercises, {}, ['dumbbell'])
+  assert.ok(r.length > 0)
+  assert.ok(r.every(e => !e.equipment || ['dumbbell', 'body only'].includes(e.equipment)))
+  assert.equal(filterExercises(exercises, {}, []).length, exercises.length)
+})
+
+test('suggest: double progression', () => {
+  assert.equal(suggest(undefined, 10), null)
+  assert.deepEqual(suggest([{ reps: 10, weight: 60 }, { reps: 10, weight: 60 }], 10), { weight: 62.5, reps: 10, up: 'weight' })
+  assert.deepEqual(suggest([{ reps: 10, weight: 60 }, { reps: 8, weight: 60 }], 10), { weight: 60, reps: 10, up: null })
+  assert.deepEqual(suggest([{ reps: 12, weight: 0 }, { reps: 10, weight: 0 }], 10), { weight: 0, reps: 13, up: 'reps' })
 })

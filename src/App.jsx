@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Model from 'react-body-highlighter'
 import exercises from './data/exercises.json'
-import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets } from './lib.js'
+import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets, suggest, WEIGHT_STEP } from './lib.js'
 
 const byId = new Map(exercises.map(e => [e.id, e]))
 const EQUIPMENT = [...new Set(exercises.map(e => e.equipment).filter(Boolean))].sort()
@@ -29,8 +29,9 @@ function useHash() {
 export default function App() {
   const [programs, setPrograms] = useStored('programs', [])
   const [sessions, setSessions] = useStored('sessions', [])
+  const [gym, setGym] = useStored('gym', [])
   const [page, id] = useHash()
-  const store = { programs, setPrograms, sessions, setSessions }
+  const store = { programs, setPrograms, sessions, setSessions, gym }
 
   let view
   if (page === 'exercise' && byId.has(id)) view = <ExerciseDetail ex={byId.get(id)} {...store} />
@@ -38,9 +39,11 @@ export default function App() {
   else if (page === 'programs') view = <Programs {...store} />
   else if (page === 'workout') view = <Workout id={id} {...store} />
   else if (page === 'history') view = <History {...store} />
-  else view = <ExerciseList />
+  else if (page === 'progress') view = <Progress sessions={sessions} />
+  else if (page === 'gym') view = <Gym gym={gym} setGym={setGym} />
+  else view = <ExerciseList gym={gym} />
 
-  const tab = page === 'workout' ? 'programs' : page === 'exercise' || !page ? '' : page
+  const tab = page === 'workout' ? 'programs' : ['exercise', 'gym', ''].includes(page ?? '') ? '' : page
   return (
     <>
       <header className="top">
@@ -48,6 +51,7 @@ export default function App() {
         <nav>
           <a href="#/" className={tab === '' ? 'on' : ''}>Exercises</a>
           <a href="#/programs" className={tab === 'programs' ? 'on' : ''}>Programs</a>
+          <a href="#/progress" className={tab === 'progress' ? 'on' : ''}>Progress</a>
           <a href="#/history" className={tab === 'history' ? 'on' : ''}>History</a>
         </nav>
       </header>
@@ -72,9 +76,9 @@ function BodyMap({ primary, secondary, onClick }) {
 
 const label = s => s.replace(/\b\w/g, c => c.toUpperCase())
 
-function ExerciseList() {
+function ExerciseList({ gym }) {
   const [filters, setFilters] = useStored('filters', { q: '', muscle: '', equipment: '' })
-  const results = useMemo(() => filterExercises(exercises, filters), [filters])
+  const results = useMemo(() => filterExercises(exercises, filters, gym), [filters, gym])
   const set = patch => setFilters({ ...filters, ...patch })
 
   return (
@@ -89,6 +93,7 @@ function ExerciseList() {
           <option value="">All equipment</option>
           {EQUIPMENT.map(m => <option key={m} value={m}>{label(m)}</option>)}
         </select>
+        <a href="#/gym" className="gym-link">{gym.length ? `My gym · ${gym.length} equipment type${gym.length > 1 ? "s" : ""} · edit` : 'Set up my gym equipment →'}</a>
         <p className="hint">Tap a muscle to filter</p>
         <BodyMap primary={filters.muscle ? [filters.muscle] : []}
           onClick={slug => { const m = muscleFromSlug(slug); set({ muscle: m === filters.muscle ? '' : m }) }} />
@@ -114,7 +119,7 @@ function ExerciseList() {
 function ExerciseDetail({ ex, programs, setPrograms, sessions }) {
   const [target, setTarget] = useState(programs[0]?.id ?? '')
   const [added, setAdded] = useState('')
-  const points = progression(sessions, ex.id)
+  const { unit, points } = progression(sessions, ex.id)
 
   function addToProgram() {
     let pid = target
@@ -151,26 +156,26 @@ function ExerciseDetail({ ex, programs, setPrograms, sessions }) {
             <button onClick={addToProgram}>Add</button>
           </div>
           {added && <p className="ok">Added. <a href={`#/programs/${added}`}>Open program →</a></p>}
-          {points.length > 0 && <><h2>Progress</h2><Chart points={points} /></>}
+          {points.length > 0 && <><h2>Progress</h2><Chart points={points} unit={unit} /></>}
         </aside>
       </div>
     </article>
   )
 }
 
-function Chart({ points }) {
+function Chart({ points, unit }) {
   const w = 300, h = 120, pad = 24
-  const ws = points.map(p => p.weight)
+  const ws = points.map(p => p.value)
   const min = Math.min(...ws), max = Math.max(...ws)
   const x = i => pad + (points.length === 1 ? (w - 2 * pad) / 2 : i * (w - 2 * pad) / (points.length - 1))
   const y = v => h - pad - (max === min ? (h - 2 * pad) / 2 : (v - min) * (h - 2 * pad) / (max - min))
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart" role="img" aria-label={`Best weight from ${min} to ${max} kg`}>
-      <polyline points={points.map((p, i) => `${x(i)},${y(p.weight)}`).join(' ')} />
-      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.weight)} r="3"><title>{p.date}: {p.weight} kg</title></circle>)}
+    <svg viewBox={`0 0 ${w} ${h}`} className="chart" role="img" aria-label={`Best set from ${min} to ${max} ${unit}`}>
+      <polyline points={points.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')} />
+      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.value)} r="3"><title>{p.date}: {p.value} {unit}</title></circle>)}
       <text x={pad} y={h - 4}>{points[0].date}</text>
       <text x={w - pad} y={h - 4} textAnchor="end">{points.at(-1).date}</text>
-      <text x={4} y={12}>{min === max ? max : `${min} → ${max}`} kg</text>
+      <text x={4} y={12}>{min === max ? max : `${min} → ${max}`} {unit}</text>
     </svg>
   )
 }
@@ -203,7 +208,7 @@ function Programs({ programs, setPrograms }) {
   )
 }
 
-function ProgramEdit({ id, programs, setPrograms }) {
+function ProgramEdit({ id, programs, setPrograms, gym }) {
   const program = programs.find(p => p.id === id)
   const [q, setQ] = useState('')
   if (!program) return <p className="narrow">Program not found. <a href="#/programs">Back</a></p>
@@ -215,7 +220,7 @@ function ProgramEdit({ id, programs, setPrograms }) {
     ;[items[i], items[i + d]] = [items[i + d], items[i]]
     update({ items })
   }
-  const matches = q.trim() ? filterExercises(exercises, { q }).slice(0, 8) : []
+  const matches = q.trim() ? filterExercises(exercises, { q }, gym).slice(0, 8) : []
   const muscles = program.items.map(it => byId.get(it.exId))
 
   return (
@@ -270,8 +275,11 @@ function Workout({ id, programs, sessions, setSessions }) {
     setDraft({
       programId: id, date: today(),
       entries: program.items.map(it => {
-        const prev = lastSets(sessions, it.exId)
-        return { exId: it.exId, sets: Array.from({ length: it.sets }, (_, i) => ({ reps: it.reps, weight: prev?.[i]?.weight ?? prev?.at(-1)?.weight ?? '', done: false })) }
+        const s = suggest(lastSets(sessions, it.exId), it.reps)
+        return {
+          exId: it.exId, hint: hint(s, it.reps), up: !!s?.up,
+          sets: Array.from({ length: it.sets }, () => ({ reps: s?.reps ?? it.reps, weight: s?.weight || '', done: false })),
+        }
       }),
     })
   }, [id, program, active])
@@ -303,6 +311,7 @@ function Workout({ id, programs, sessions, setSessions }) {
       {active.entries.map((e, ei) => (
         <section key={ei} className="exercise-log">
           <h2><a href={`#/exercise/${e.exId}`}>{byId.get(e.exId)?.name}</a></h2>
+          {e.hint && <p className={e.up ? 'suggest up' : 'suggest'}>{e.hint}</p>}
           <table>
             <thead><tr><th>Set</th><th>Reps</th><th>kg</th><th>Done</th></tr></thead>
             <tbody>
@@ -322,6 +331,61 @@ function Workout({ id, programs, sessions, setSessions }) {
       <div className="row">
         <button onClick={finish}>Finish workout</button>
         <button className="ghost" onClick={() => { if (confirm('Discard this workout?')) { setDraft(null); location.hash = '#/programs' } }}>Discard</button>
+      </div>
+    </div>
+  )
+}
+
+function hint(s, target) {
+  if (!s) return null
+  if (s.up === 'weight') return `↑ ${s.weight} kg (+${WEIGHT_STEP}): every set reached ${target} reps last time.`
+  if (s.up === 'reps') return `↑ ${s.reps} reps: every set reached the target last time.`
+  return s.weight
+    ? `Stay at ${s.weight} kg until every set reaches ${target} reps, then the weight goes up.`
+    : `Aim for ${target} reps on every set, then the reps go up.`
+}
+
+function Progress({ sessions }) {
+  const recentFirst = [...sessions].sort((a, b) => b.date.localeCompare(a.date))
+  const ids = [...new Set(recentFirst.flatMap(s => s.entries.map(e => e.exId)))]
+  return (
+    <div className="narrow">
+      <h1>Progress</h1>
+      {ids.length === 0 && <p className="hint">Log a workout to see your progress here.</p>}
+      <div className="charts">
+        {ids.map(id => {
+          const { unit, points } = progression(sessions, id)
+          const first = points[0].value, last = points.at(-1).value, diff = +(last - first).toFixed(2)
+          return (
+            <section key={id} className="chart-card">
+              <a href={`#/exercise/${id}`}>{byId.get(id)?.name ?? id}</a>
+              <p className="big">{last} {unit} {diff !== 0 && <span className={diff > 0 ? 'up' : 'down'}>{diff > 0 ? '+' : ''}{diff} {unit}</span>}</p>
+              <Chart points={points} unit={unit} />
+              <p className="hint">{points.length} session{points.length > 1 ? 's' : ''} · best set per session</p>
+            </section>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function Gym({ gym, setGym }) {
+  const toggle = eq => setGym(gym.includes(eq) ? gym.filter(x => x !== eq) : [...gym, eq])
+  const count = filterExercises(exercises, {}, gym).length
+  return (
+    <div className="narrow">
+      <a href="#/" className="back">← Exercises</a>
+      <h1>My gym</h1>
+      <p className="hint">Tick the equipment your gym has. Exercises that need anything else are hidden from the list and the program builder. Bodyweight exercises are always shown.</p>
+      <div className="checks">
+        {EQUIPMENT.filter(eq => eq !== 'body only').map(eq => (
+          <label key={eq} className="check"><input type="checkbox" checked={gym.includes(eq)} onChange={() => toggle(eq)} /> {label(eq)}</label>
+        ))}
+      </div>
+      <div className="row">
+        <button className="ghost" onClick={() => setGym([])} disabled={!gym.length}>Show all exercises</button>
+        <span className="hint">{count} exercises available</span>
       </div>
     </div>
   )

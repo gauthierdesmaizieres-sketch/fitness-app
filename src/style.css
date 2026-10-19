@@ -109,3 +109,19 @@ tr.done td:first-child { color: var(--accent); font-weight: 700; }
   nav a { padding: 0.3rem 0.5rem; font-size: 0.9rem; }
   .brand { display: none; }
 }
+
+.gym-link { color: var(--accent); font-size: 0.9rem; text-decoration: none; }
+.suggest { margin: -0.4rem 0 0.6rem; font-size: 0.88rem; color: var(--muted); }
+.suggest.up { color: var(--accent); }
+.checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
+.check { display: flex; align-items: center; gap: 0.6rem; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 0.7rem 0.9rem; cursor: pointer; }
+.check input { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+.check:has(input:checked) { border-color: var(--accent); }
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 0.8rem; }
+.chart-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.9rem 1rem; }
+.chart-card > a { font-weight: 600; text-decoration: none; }
+.chart-card p { margin: 0.2rem 0; }
+.big { font-size: 1.5rem; font-weight: 700; }
+.big span { font-size: 0.9rem; font-weight: 600; margin-left: 0.4rem; }
+.big .up { color: var(--accent); }
+.big .down { color: var(--danger); }

@@ -34,21 +34,39 @@ export function bodyData(primary, secondary = []) {
 
 export const muscleFromSlug = slug => MUSCLES.find(m => MUSCLE_MAP[m].includes(slug)) ?? ''
 
-export function filterExercises(list, { q = '', muscle = '', equipment = '' }) {
+// Exercises with no equipment (or bodyweight) are always doable; an empty gym means "show everything".
+export const inGym = (e, gym = []) => !gym.length || !e.equipment || e.equipment === 'body only' || gym.includes(e.equipment)
+
+export function filterExercises(list, { q = '', muscle = '', equipment = '' }, gym = []) {
   const s = q.trim().toLowerCase()
   return list.filter(e =>
     (!s || e.name.toLowerCase().includes(s)) &&
     (!muscle || e.primaryMuscles.includes(muscle)) &&
-    (!equipment || e.equipment === equipment))
+    (!equipment || e.equipment === equipment) &&
+    inGym(e, gym))
 }
 
-// Heaviest weight lifted per session for one exercise, oldest first.
+// Best set per session for one exercise, oldest first: heaviest weight, or most reps when done bodyweight.
 export function progression(sessions, exId) {
-  return sessions
+  const done = sessions
     .map(s => ({ date: s.date, sets: s.entries.find(e => e.exId === exId)?.sets ?? [] }))
-    .map(({ date, sets }) => ({ date, weight: Math.max(0, ...sets.map(x => Number(x.weight) || 0)) }))
-    .filter(p => p.weight > 0)
+    .filter(p => p.sets.length)
     .sort((a, b) => a.date.localeCompare(b.date))
+  const unit = done.some(p => p.sets.some(x => x.weight > 0)) ? 'kg' : 'reps'
+  const points = done.map(({ date, sets }) => ({ date, value: Math.max(...sets.map(x => (unit === 'kg' ? x.weight : x.reps) || 0)) }))
+  return { unit, points }
+}
+
+export const WEIGHT_STEP = 2.5 // kg, the smallest jump most gyms allow (two 1.25 kg plates)
+
+// Double progression: once every set reached the target reps, add weight (or one rep when bodyweight);
+// otherwise keep the weight and aim for the target again.
+export function suggest(last, targetReps) {
+  if (!last?.length) return null
+  const weight = Math.max(...last.map(s => s.weight || 0))
+  const reps = Math.max(...last.map(s => s.reps || 0))
+  if (!last.every(s => s.reps >= targetReps)) return { weight, reps: targetReps, up: null }
+  return weight > 0 ? { weight: weight + WEIGHT_STEP, reps: targetReps, up: 'weight' } : { weight: 0, reps: reps + 1, up: 'reps' }
 }
 
 // Sets from the most recent session containing this exercise, to prefill a new workout.

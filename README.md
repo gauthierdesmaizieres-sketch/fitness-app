@@ -13,9 +13,11 @@ npm run build    # production build in dist/, with offline service worker
 ```
 
 - **Exercises**: search and filter by muscle (dropdown or tap the body map) and equipment.
+- **My gym**: tick the equipment your gym has; the list and the program builder only show exercises you can do there.
 - **Exercise page**: photos, instructions, primary/secondary muscles on a body map, progress chart.
 - **Programs**: add exercises with sets × reps, reorder, see the muscles the program works.
-- **Workout**: log reps/kg per set (prefilled from last time); the draft survives a page reload.
+- **Workout**: log reps/kg per set; the draft survives a page reload. Each exercise is prefilled with a progression suggestion: +2.5 kg once every set reached the target reps (one more rep for bodyweight exercises), otherwise the same weight again.
+- **Progress**: one chart per exercise with the best set of each session (kg, or reps for bodyweight).
 - **History**: past workouts.
 
 ## Credits
