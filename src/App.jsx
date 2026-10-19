@@ -1,0 +1,354 @@
+import { useEffect, useMemo, useState } from 'react'
+import Model from 'react-body-highlighter'
+import exercises from './data/exercises.json'
+import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets } from './lib.js'
+
+const byId = new Map(exercises.map(e => [e.id, e]))
+const EQUIPMENT = [...new Set(exercises.map(e => e.equipment).filter(Boolean))].sort()
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+const today = () => new Date().toISOString().slice(0, 10)
+
+function useStored(key, initial) {
+  const [value, setValue] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(key)) ?? initial } catch { return initial }
+  })
+  useEffect(() => { localStorage.setItem(key, JSON.stringify(value)) }, [key, value])
+  return [value, setValue]
+}
+
+function useHash() {
+  const [hash, setHash] = useState(location.hash)
+  useEffect(() => {
+    const on = () => { setHash(location.hash); window.scrollTo(0, 0) }
+    addEventListener('hashchange', on)
+    return () => removeEventListener('hashchange', on)
+  }, [])
+  return hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent)
+}
+
+export default function App() {
+  const [programs, setPrograms] = useStored('programs', [])
+  const [sessions, setSessions] = useStored('sessions', [])
+  const [page, id] = useHash()
+  const store = { programs, setPrograms, sessions, setSessions }
+
+  let view
+  if (page === 'exercise' && byId.has(id)) view = <ExerciseDetail ex={byId.get(id)} {...store} />
+  else if (page === 'programs' && id) view = <ProgramEdit id={id} {...store} />
+  else if (page === 'programs') view = <Programs {...store} />
+  else if (page === 'workout') view = <Workout id={id} {...store} />
+  else if (page === 'history') view = <History {...store} />
+  else view = <ExerciseList />
+
+  const tab = page === 'workout' ? 'programs' : page === 'exercise' || !page ? '' : page
+  return (
+    <>
+      <header className="top">
+        <a href="#/" className="brand">FITNESS</a>
+        <nav>
+          <a href="#/" className={tab === '' ? 'on' : ''}>Exercises</a>
+          <a href="#/programs" className={tab === 'programs' ? 'on' : ''}>Programs</a>
+          <a href="#/history" className={tab === 'history' ? 'on' : ''}>History</a>
+        </nav>
+      </header>
+      <main>{view}</main>
+      <footer>Exercise data: <a href="https://github.com/yuhonas/free-exercise-db">free-exercise-db</a> (public domain)</footer>
+    </>
+  )
+}
+
+function BodyMap({ primary, secondary, onClick }) {
+  const data = bodyData(primary, secondary)
+  const colors = ['#8fa832', '#d4ff3a', '#d4ff3a']
+  return (
+    <div className="bodymap">
+      {['anterior', 'posterior'].map(type => (
+        <Model key={type} type={type} data={data} highlightedColors={colors} bodyColor="#3a3d44"
+          onClick={onClick && (m => onClick(m.muscle))} style={{ width: '100%' }} />
+      ))}
+    </div>
+  )
+}
+
+const label = s => s.replace(/\b\w/g, c => c.toUpperCase())
+
+function ExerciseList() {
+  const [filters, setFilters] = useStored('filters', { q: '', muscle: '', equipment: '' })
+  const results = useMemo(() => filterExercises(exercises, filters), [filters])
+  const set = patch => setFilters({ ...filters, ...patch })
+
+  return (
+    <div className="split">
+      <aside className="panel">
+        <input type="search" placeholder="Search exercises…" value={filters.q} onChange={e => set({ q: e.target.value })} aria-label="Search" />
+        <select value={filters.muscle} onChange={e => set({ muscle: e.target.value })} aria-label="Muscle">
+          <option value="">All muscles</option>
+          {MUSCLES.map(m => <option key={m} value={m}>{label(m)}</option>)}
+        </select>
+        <select value={filters.equipment} onChange={e => set({ equipment: e.target.value })} aria-label="Equipment">
+          <option value="">All equipment</option>
+          {EQUIPMENT.map(m => <option key={m} value={m}>{label(m)}</option>)}
+        </select>
+        <p className="hint">Tap a muscle to filter</p>
+        <BodyMap primary={filters.muscle ? [filters.muscle] : []}
+          onClick={slug => { const m = muscleFromSlug(slug); set({ muscle: m === filters.muscle ? '' : m }) }} />
+      </aside>
+      <section>
+        <p className="count">{results.length} exercises</p>
+        <ul className="grid">
+          {results.map(e => (
+            <li key={e.id}>
+              <a href={`#/exercise/${e.id}`} className="card">
+                <img src={IMG_BASE + e.images[0]} alt="" loading="lazy" />
+                <strong>{e.name}</strong>
+                <span>{e.primaryMuscles.map(label).join(', ')} · {e.equipment ?? 'none'}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  )
+}
+
+function ExerciseDetail({ ex, programs, setPrograms, sessions }) {
+  const [target, setTarget] = useState(programs[0]?.id ?? '')
+  const [added, setAdded] = useState('')
+  const points = progression(sessions, ex.id)
+
+  function addToProgram() {
+    let pid = target
+    if (!pid) {
+      pid = newId()
+      setPrograms([...programs, { id: pid, name: 'My program', items: [{ exId: ex.id, sets: 3, reps: 10 }] }])
+    } else {
+      setPrograms(programs.map(p => p.id === pid ? { ...p, items: [...p.items, { exId: ex.id, sets: 3, reps: 10 }] } : p))
+    }
+    setTarget(pid)
+    setAdded(pid)
+  }
+
+  return (
+    <article className="detail">
+      <a href="#/" className="back">← Exercises</a>
+      <h1>{ex.name}</h1>
+      <p className="tags">{[ex.level, ex.category, ex.equipment, ex.mechanic, ex.force].filter(Boolean).map(t => <span key={t}>{t}</span>)}</p>
+      <div className="split">
+        <div>
+          <div className="photos">{ex.images.map(i => <img key={i} src={IMG_BASE + i} alt={ex.name} />)}</div>
+          <h2>Instructions</h2>
+          <ol>{ex.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol>
+        </div>
+        <aside className="panel">
+          <BodyMap primary={ex.primaryMuscles} secondary={ex.secondaryMuscles} />
+          <p><i className="dot primary" /> Primary: {ex.primaryMuscles.map(label).join(', ')}</p>
+          {ex.secondaryMuscles.length > 0 && <p><i className="dot secondary" /> Secondary: {ex.secondaryMuscles.map(label).join(', ')}</p>}
+          <div className="row">
+            <select value={target} onChange={e => setTarget(e.target.value)} aria-label="Program">
+              {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <option value="">+ New program</option>
+            </select>
+            <button onClick={addToProgram}>Add</button>
+          </div>
+          {added && <p className="ok">Added. <a href={`#/programs/${added}`}>Open program →</a></p>}
+          {points.length > 0 && <><h2>Progress</h2><Chart points={points} /></>}
+        </aside>
+      </div>
+    </article>
+  )
+}
+
+function Chart({ points }) {
+  const w = 300, h = 120, pad = 24
+  const ws = points.map(p => p.weight)
+  const min = Math.min(...ws), max = Math.max(...ws)
+  const x = i => pad + (points.length === 1 ? (w - 2 * pad) / 2 : i * (w - 2 * pad) / (points.length - 1))
+  const y = v => h - pad - (max === min ? (h - 2 * pad) / 2 : (v - min) * (h - 2 * pad) / (max - min))
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="chart" role="img" aria-label={`Best weight from ${min} to ${max} kg`}>
+      <polyline points={points.map((p, i) => `${x(i)},${y(p.weight)}`).join(' ')} />
+      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.weight)} r="3"><title>{p.date}: {p.weight} kg</title></circle>)}
+      <text x={pad} y={h - 4}>{points[0].date}</text>
+      <text x={w - pad} y={h - 4} textAnchor="end">{points.at(-1).date}</text>
+      <text x={4} y={12}>{min === max ? max : `${min} → ${max}`} kg</text>
+    </svg>
+  )
+}
+
+function Programs({ programs, setPrograms }) {
+  const [name, setName] = useState('')
+  function create(e) {
+    e.preventDefault()
+    const id = newId()
+    setPrograms([...programs, { id, name: name.trim() || 'My program', items: [] }])
+    location.hash = `#/programs/${id}`
+  }
+  return (
+    <div className="narrow">
+      <h1>Programs</h1>
+      <form onSubmit={create} className="row">
+        <input placeholder="New program name" value={name} onChange={e => setName(e.target.value)} aria-label="Program name" />
+        <button>Create</button>
+      </form>
+      {programs.length === 0 && <p className="hint">No program yet. Create one, or add exercises from an exercise page.</p>}
+      <ul className="list">
+        {programs.map(p => (
+          <li key={p.id}>
+            <a href={`#/programs/${p.id}`}><strong>{p.name}</strong><span>{p.items.length} exercises</span></a>
+            <a href={`#/workout/${p.id}`} className="btn">Start</a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ProgramEdit({ id, programs, setPrograms }) {
+  const program = programs.find(p => p.id === id)
+  const [q, setQ] = useState('')
+  if (!program) return <p className="narrow">Program not found. <a href="#/programs">Back</a></p>
+
+  const update = patch => setPrograms(programs.map(p => p.id === id ? { ...p, ...patch } : p))
+  const setItem = (i, patch) => update({ items: program.items.map((it, j) => j === i ? { ...it, ...patch } : it) })
+  const move = (i, d) => {
+    const items = [...program.items]
+    ;[items[i], items[i + d]] = [items[i + d], items[i]]
+    update({ items })
+  }
+  const matches = q.trim() ? filterExercises(exercises, { q }).slice(0, 8) : []
+  const muscles = program.items.map(it => byId.get(it.exId))
+
+  return (
+    <div className="split">
+      <section>
+        <a href="#/programs" className="back">← Programs</a>
+        <input className="title" value={program.name} onChange={e => update({ name: e.target.value })} aria-label="Program name" />
+        <ol className="items">
+          {program.items.map((it, i) => (
+            <li key={i}>
+              <a href={`#/exercise/${it.exId}`}>{byId.get(it.exId)?.name ?? it.exId}</a>
+              <label>Sets <input type="number" min="1" value={it.sets} onChange={e => setItem(i, { sets: +e.target.value })} /></label>
+              <label>Reps <input type="number" min="1" value={it.reps} onChange={e => setItem(i, { reps: +e.target.value })} /></label>
+              <span className="tools">
+                <button className="ghost" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">↑</button>
+                <button className="ghost" disabled={i === program.items.length - 1} onClick={() => move(i, 1)} aria-label="Move down">↓</button>
+                <button className="ghost" onClick={() => update({ items: program.items.filter((_, j) => j !== i) })} aria-label="Remove">✕</button>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <input type="search" placeholder="Add an exercise…" value={q} onChange={e => setQ(e.target.value)} aria-label="Add an exercise" />
+        <ul className="matches">
+          {matches.map(e => (
+            <li key={e.id}><button className="ghost" onClick={() => { update({ items: [...program.items, { exId: e.id, sets: 3, reps: 10 }] }); setQ('') }}>
+              + {e.name} <span>{e.primaryMuscles.map(label).join(', ')}</span></button></li>
+          ))}
+        </ul>
+        <div className="row">
+          <a href={`#/workout/${id}`} className="btn">Start workout</a>
+          <button className="danger" onClick={() => {
+            if (confirm(`Delete “${program.name}”?`)) { setPrograms(programs.filter(p => p.id !== id)); location.hash = '#/programs' }
+          }}>Delete program</button>
+        </div>
+      </section>
+      <aside className="panel">
+        <h2>Muscles worked</h2>
+        <BodyMap primary={muscles.flatMap(e => e?.primaryMuscles ?? [])} secondary={muscles.flatMap(e => e?.secondaryMuscles ?? [])} />
+      </aside>
+    </div>
+  )
+}
+
+function Workout({ id, programs, sessions, setSessions }) {
+  const program = programs.find(p => p.id === id)
+  // The draft lives in localStorage so a refresh mid-workout loses nothing.
+  const [draft, setDraft] = useStored('draft', null)
+  const active = draft?.programId === id ? draft : null
+
+  useEffect(() => {
+    if (!program || active) return
+    setDraft({
+      programId: id, date: today(),
+      entries: program.items.map(it => {
+        const prev = lastSets(sessions, it.exId)
+        return { exId: it.exId, sets: Array.from({ length: it.sets }, (_, i) => ({ reps: it.reps, weight: prev?.[i]?.weight ?? prev?.at(-1)?.weight ?? '', done: false })) }
+      }),
+    })
+  }, [id, program, active])
+
+  if (!program) return <p className="narrow">Program not found. <a href="#/programs">Back</a></p>
+  if (!active) return null
+
+  const setSet = (ei, si, patch) => setDraft({
+    ...active, entries: active.entries.map((e, i) => i !== ei ? e : { ...e, sets: e.sets.map((s, j) => j === si ? { ...s, ...patch } : s) }),
+  })
+  const addSet = ei => setDraft({
+    ...active, entries: active.entries.map((e, i) => i !== ei ? e : { ...e, sets: [...e.sets, { ...(e.sets.at(-1) ?? { reps: 10, weight: '' }), done: false }] }),
+  })
+
+  function finish() {
+    const entries = active.entries
+      .map(e => ({ exId: e.exId, sets: e.sets.filter(s => s.done).map(({ reps, weight }) => ({ reps: +reps || 0, weight: +weight || 0 })) }))
+      .filter(e => e.sets.length)
+    if (!entries.length && !confirm('No set is ticked as done. Discard this workout?')) return
+    if (entries.length) setSessions([...sessions, { id: newId(), programName: program.name, date: active.date, entries }])
+    setDraft(null)
+    location.hash = entries.length ? '#/history' : '#/programs'
+  }
+
+  return (
+    <div className="narrow">
+      <h1>{program.name}</h1>
+      <label className="date">Date <input type="date" value={active.date} onChange={e => setDraft({ ...active, date: e.target.value })} /></label>
+      {active.entries.map((e, ei) => (
+        <section key={ei} className="exercise-log">
+          <h2><a href={`#/exercise/${e.exId}`}>{byId.get(e.exId)?.name}</a></h2>
+          <table>
+            <thead><tr><th>Set</th><th>Reps</th><th>kg</th><th>Done</th></tr></thead>
+            <tbody>
+              {e.sets.map((s, si) => (
+                <tr key={si} className={s.done ? 'done' : ''}>
+                  <td>{si + 1}</td>
+                  <td><input type="number" min="0" inputMode="numeric" value={s.reps} onChange={x => setSet(ei, si, { reps: x.target.value })} aria-label="Reps" /></td>
+                  <td><input type="number" min="0" step="0.5" inputMode="decimal" value={s.weight} onChange={x => setSet(ei, si, { weight: x.target.value })} aria-label="Weight in kg" /></td>
+                  <td><input type="checkbox" checked={s.done} onChange={x => setSet(ei, si, { done: x.target.checked })} aria-label="Done" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <button className="ghost" onClick={() => addSet(ei)}>+ Set</button>
+        </section>
+      ))}
+      <div className="row">
+        <button onClick={finish}>Finish workout</button>
+        <button className="ghost" onClick={() => { if (confirm('Discard this workout?')) { setDraft(null); location.hash = '#/programs' } }}>Discard</button>
+      </div>
+    </div>
+  )
+}
+
+function History({ sessions, setSessions }) {
+  const sorted = [...sessions].sort((a, b) => b.date.localeCompare(a.date))
+  return (
+    <div className="narrow">
+      <h1>History</h1>
+      {sorted.length === 0 && <p className="hint">No workout logged yet. Start one from a program.</p>}
+      <ul className="history">
+        {sorted.map(s => (
+          <li key={s.id}>
+            <header>
+              <strong>{s.date}</strong> <span>{s.programName}</span>
+              <button className="ghost" onClick={() => confirm('Delete this workout?') && setSessions(sessions.filter(x => x.id !== s.id))} aria-label="Delete workout">✕</button>
+            </header>
+            <ul>
+              {s.entries.map((e, i) => (
+                <li key={i}><a href={`#/exercise/${e.exId}`}>{byId.get(e.exId)?.name ?? e.exId}</a>
+                  <span>{e.sets.map(x => x.weight ? `${x.reps}×${x.weight}kg` : `${x.reps} reps`).join(' · ')}</span></li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
