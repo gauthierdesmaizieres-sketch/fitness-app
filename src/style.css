@@ -177,7 +177,7 @@ select.theme { width: auto; padding: 0.3rem 0.5rem; font-size: 0.85rem; margin-r
 [data-theme="saiyan"] .card, [data-theme="hunter"] .card { transition: transform .12s, box-shadow .12s; }
 /* Photos printed like manga pages, colour comes back on hover */
 [data-theme="saiyan"] :is(.card img, .photos img), [data-theme="hunter"] :is(.card img, .photos img) {
-  filter: grayscale(1) contrast(1.25); border-bottom: 2.5px solid var(--ink); transition: filter .2s;
+  filter: url(#manga); border-bottom: 2.5px solid var(--ink); background: #fff;
 }
 [data-theme="saiyan"] .card:hover img, [data-theme="hunter"] .card:hover img { filter: none; }
 [data-theme="saiyan"] .photos img, [data-theme="hunter"] .photos img { border: 2.5px solid var(--ink); border-radius: 4px; }

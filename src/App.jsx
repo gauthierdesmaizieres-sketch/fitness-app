@@ -60,6 +60,7 @@ export default function App() {
           <a href="#/history" className={tab === 'history' ? 'on' : ''}>History</a>
         </nav>
       </header>
+      <MangaFilter />
       <main>{view}</main>
       <footer>Exercise data: <a href="https://github.com/yuhonas/free-exercise-db">free-exercise-db</a> (public domain)</footer>
     </>
@@ -71,6 +72,29 @@ const THEMES = {
   default: { label: 'Default', brand: 'FITNESS' },
   saiyan: { label: 'Saiyan', brand: 'SAIYAN GYM' },
   hunter: { label: 'Hunter', brand: 'HUNTER GYM' },
+}
+
+// Turns exercise photos into inked manga panels (used by the manga themes in style.css):
+// black outlines from edge detection, multiplied over flat grey screen tones.
+const ink = '1 1 0 0 0 0 0 0 0 0 0 0'
+const tones = '0.12 0.45 0.45 0.78 0.78 1 1'
+function MangaFilter() {
+  return (
+    <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+      <filter id="manga" colorInterpolationFilters="sRGB">
+        <feColorMatrix type="saturate" values="0" result="gray" />
+        <feGaussianBlur in="gray" stdDeviation="0.7" result="soft" />
+        <feConvolveMatrix in="soft" order="3" kernelMatrix="-1 -1 -1 -1 8 -1 -1 -1 -1" preserveAlpha="true" result="edges" />
+        <feComponentTransfer in="edges" result="lines">
+          <feFuncR type="discrete" tableValues={ink} /><feFuncG type="discrete" tableValues={ink} /><feFuncB type="discrete" tableValues={ink} />
+        </feComponentTransfer>
+        <feComponentTransfer in="soft" result="flat">
+          <feFuncR type="discrete" tableValues={tones} /><feFuncG type="discrete" tableValues={tones} /><feFuncB type="discrete" tableValues={tones} />
+        </feComponentTransfer>
+        <feBlend in="lines" in2="flat" mode="multiply" />
+      </filter>
+    </svg>
+  )
 }
 
 function BodyMap({ primary, secondary, onClick }) {
