@@ -1,2 +1,4 @@
 node_modules
 dist
+tools/manga/.venv
+tools/manga/cache

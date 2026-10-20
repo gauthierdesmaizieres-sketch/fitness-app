@@ -7,6 +7,11 @@ const byId = new Map(exercises.map(e => [e.id, e]))
 const EQUIPMENT = [...new Set(exercises.map(e => e.equipment).filter(Boolean))].sort()
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 const today = () => new Date().toISOString().slice(0, 10)
+// Manga redraws live in public/manga (tools/manga/generate.py); fall back to the original photo when one is missing.
+const photo = path => ({
+  src: `./manga/${path.replace(/\.\w+$/, '.webp')}`,
+  onError: e => { if (!e.currentTarget.src.startsWith(IMG_BASE)) e.currentTarget.src = IMG_BASE + path },
+})
 
 function useStored(key, initial) {
   const [value, setValue] = useState(() => {
@@ -104,7 +109,7 @@ function ExerciseList({ gym }) {
           {results.map(e => (
             <li key={e.id}>
               <a href={`#/exercise/${e.id}`} className="card">
-                <img src={IMG_BASE + e.images[0]} alt="" loading="lazy" />
+                <img {...photo(e.images[0])} alt="" loading="lazy" />
                 <strong>{e.name}</strong>
                 <span>{e.primaryMuscles.map(label).join(', ')} · {e.equipment ?? 'none'}</span>
               </a>
@@ -140,7 +145,7 @@ function ExerciseDetail({ ex, programs, setPrograms, sessions }) {
       <p className="tags">{[ex.level, ex.category, ex.equipment, ex.mechanic, ex.force].filter(Boolean).map(t => <span key={t}>{t}</span>)}</p>
       <div className="split">
         <div>
-          <div className="photos">{ex.images.map(i => <img key={i} src={IMG_BASE + i} alt={ex.name} />)}</div>
+          <div className="photos">{ex.images.map(i => <img key={i} {...photo(i)} alt={ex.name} />)}</div>
           <h2>Instructions</h2>
           <ol>{ex.instructions.map((s, i) => <li key={i}>{s}</li>)}</ol>
         </div>

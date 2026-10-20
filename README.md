@@ -20,6 +20,23 @@ npm run build    # production build in dist/, with offline service worker
 - **Progress**: one chart per exercise with the best set of each session (kg, or reps for bodyweight).
 - **History**: past workouts.
 
+## Anime-style exercise images
+
+`public/manga/<exercise>/<n>.webp` are the dataset photos redrawn as 90s shonen-anime characters (style only, no real characters).
+The app shows them when they exist and falls back to the original photo otherwise. So far only 10 exercises are done.
+
+They are generated locally on an NVIDIA GPU by [tools/manga/generate.py](tools/manga/generate.py)
+(Stable Diffusion 1.5 anime model `Lykon/AnyLoRA` + Canny ControlNet to keep pose and equipment; about 5 GB of models on first run):
+
+```bash
+cd tools/manga
+uv venv --python 3.12 .venv
+uv pip install --python .venv/Scripts/python.exe torch --index-url https://download.pytorch.org/whl/cu124
+uv pip install --python .venv/Scripts/python.exe diffusers transformers accelerate safetensors opencv-python-headless pillow
+.venv/Scripts/python.exe generate.py Pullups Barbell_Squat   # some exercises
+.venv/Scripts/python.exe generate.py --all                    # all of them, skips images already done
+```
+
 ## Credits
 - Exercise data and photos: [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense). `src/data/exercises.json` is a copy of `dist/exercises.json`; photos load from GitHub and are cached offline once seen.
 - Body map: [react-body-highlighter](https://github.com/GV79/react-body-highlighter) (MIT).

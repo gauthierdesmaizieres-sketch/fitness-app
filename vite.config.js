@@ -18,11 +18,15 @@ export default defineConfig({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 3_000_000,
-        // Exercise photos are served from the dataset repo; cache them as they are viewed.
+        // Exercise images (manga redraws, or the dataset's photos as fallback): cache them as they are viewed.
         runtimeCaching: [{
           urlPattern: /^https:\/\/raw\.githubusercontent\.com\/yuhonas\//,
           handler: 'CacheFirst',
           options: { cacheName: 'exercise-images', expiration: { maxEntries: 2000 } },
+        }, {
+          urlPattern: /\/manga\/.+\.webp$/,
+          handler: 'CacheFirst',
+          options: { cacheName: 'manga-images', expiration: { maxEntries: 2000 } },
         }],
       },
     }),
