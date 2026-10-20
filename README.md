@@ -19,7 +19,7 @@ npm run build    # production build in dist/, with offline service worker
 - **Workout**: log reps/kg per set; the draft survives a page reload. Each exercise is prefilled with a progression suggestion: +2.5 kg once every set reached the target reps (one more rep for bodyweight exercises), otherwise the same weight again.
 - **Progress**: one chart per exercise with the best set of each session (kg, or reps for bodyweight).
 - **History**: past workouts.
-- **Themes** (picker in the header): Default, Saiyan and Hunter, manga-style looks (paper, ink panels, halftone, speed lines, Bangers font, exercise photos redrawn as inked manga panels by an SVG filter). Inspired by the series, no artwork from them.
+- **Themes** (picker in the header): Default, Saiyan and Hunter, manga-style looks (paper, ink panels, halftone, speed lines, Bangers font). Inspired by the series, no artwork from them.
 
 ## Credits
 - Exercise data and photos: [free-exercise-db](https://github.com/yuhonas/free-exercise-db) (Unlicense). `src/data/exercises.json` is a copy of `dist/exercises.json`; photos load from GitHub and are cached offline once seen.
