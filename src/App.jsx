@@ -30,8 +30,6 @@ export default function App() {
   const [programs, setPrograms] = useStored('programs', [])
   const [sessions, setSessions] = useStored('sessions', [])
   const [gym, setGym] = useStored('gym', [])
-  const [theme, setTheme] = useStored('theme', 'default')
-  useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   const [page, id] = useHash()
   const store = { programs, setPrograms, sessions, setSessions, gym }
 
@@ -49,10 +47,7 @@ export default function App() {
   return (
     <>
       <header className="top">
-        <a href="#/" className="brand">{THEMES[theme]?.brand ?? 'FITNESS'}</a>
-        <select className="theme" value={theme} onChange={e => setTheme(e.target.value)} aria-label="Theme">
-          {Object.entries(THEMES).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
-        </select>
+        <a href="#/" className="brand">FITNESS</a>
         <nav>
           <a href="#/" className={tab === '' ? 'on' : ''}>Exercises</a>
           <a href="#/programs" className={tab === 'programs' ? 'on' : ''}>Programs</a>
@@ -66,20 +61,13 @@ export default function App() {
   )
 }
 
-// Visual themes only: colours and fonts in style.css, no artwork from the series.
-const THEMES = {
-  default: { label: 'Default', brand: 'FITNESS' },
-  saiyan: { label: 'Saiyan', brand: 'SAIYAN GYM' },
-  hunter: { label: 'Hunter', brand: 'HUNTER GYM' },
-}
-
 function BodyMap({ primary, secondary, onClick }) {
   const data = bodyData(primary, secondary)
-  const colors = ['var(--map-secondary)', 'var(--map-primary)', 'var(--map-primary)']
+  const colors = ['#8fa832', '#d4ff3a', '#d4ff3a']
   return (
     <div className="bodymap">
       {['anterior', 'posterior'].map(type => (
-        <Model key={type} type={type} data={data} highlightedColors={colors} bodyColor="var(--map-body)"
+        <Model key={type} type={type} data={data} highlightedColors={colors} bodyColor="#3a3d44"
           onClick={onClick && (m => onClick(m.muscle))} style={{ width: '100%' }} />
       ))}
     </div>
