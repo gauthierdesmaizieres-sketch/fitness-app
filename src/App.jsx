@@ -8,7 +8,7 @@ const EQUIPMENT = [...new Set(exercises.map(e => e.equipment).filter(Boolean))].
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 const today = () => new Date().toISOString().slice(0, 10)
 // Manga redraws live in public/manga (tools/manga/generate.py); fall back to the original photo when one is missing.
-const photo = path => ({
+const photo = path => !path ? {} : ({  // a few exercises (Kettlebell_Halo, ...) have no photo at all
   src: `./manga/${path.replace(/\.\w+$/, '.webp')}`,
   onError: e => { if (!e.currentTarget.src.startsWith(IMG_BASE)) e.currentTarget.src = IMG_BASE + path },
 })
