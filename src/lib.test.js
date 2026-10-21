@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { MUSCLE_MAP, bodyData, filterExercises, progression, lastSets, muscleFromSlug, suggest } from './lib.js'
+import { MUSCLE_MAP, bodyData, filterExercises, progression, lastSets, muscleFromSlug, suggest, stretchSession, stretchSteps, STRETCH_ZONES, HOLD, REST } from './lib.js'
 
 const exercises = JSON.parse(readFileSync(new URL('./data/exercises.json', import.meta.url)))
 
@@ -48,4 +48,22 @@ test('suggest: double progression', () => {
   assert.deepEqual(suggest([{ reps: 10, weight: 60 }, { reps: 10, weight: 60 }], 10), { weight: 62.5, reps: 10, up: 'weight' })
   assert.deepEqual(suggest([{ reps: 10, weight: 60 }, { reps: 8, weight: 60 }], 10), { weight: 60, reps: 10, up: null })
   assert.deepEqual(suggest([{ reps: 12, weight: 0 }, { reps: 10, weight: 0 }], 10), { weight: 0, reps: 13, up: 'reps' })
+})
+
+test('stretch sessions: right zone, level cap, length', () => {
+  for (const zone of Object.keys(STRETCH_ZONES)) {
+    const s = stretchSession(exercises, zone, 1)
+    assert.ok(s.length > 0, zone)
+    assert.ok(s.every(e => e.category === 'stretching' && e.level === 'beginner'), zone)
+    assert.ok(s.every(e => e.primaryMuscles.some(m => STRETCH_ZONES[zone].includes(m))), zone)
+  }
+  const full = stretchSession(exercises, 'full', 3)
+  const secs = stretchSteps(full).length * (HOLD + REST)
+  assert.ok(secs > 480 && secs <= 600, secs)
+  assert.ok(stretchSteps(stretchSession(exercises, 'hips', 1)).length * (HOLD + REST) <= 300)
+  assert.equal(new Set(full).size, full.length)
+  assert.equal(stretchSession(exercises, 'hamstrings', 3)[0].level, 'expert')
+  const roller = stretchSession(exercises, 'roller', 1)
+  assert.ok(roller.length >= 7 && stretchSteps(roller).length * (HOLD + REST) <= 600)
+  assert.ok(roller.every(e => e.equipment === 'foam roll'))
 })

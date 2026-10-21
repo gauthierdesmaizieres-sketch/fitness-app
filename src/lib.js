@@ -74,3 +74,38 @@ export function lastSets(sessions, exId) {
   const s = [...sessions].sort((a, b) => b.date.localeCompare(a.date)).find(s => s.entries.some(e => e.exId === exId))
   return s?.entries.find(e => e.exId === exId).sets
 }
+
+// Flexibility module: body zones -> dataset muscles. 'full' mixes every zone.
+export const STRETCH_ZONES = {
+  hips: ['glutes', 'adductors', 'abductors'],
+  hamstrings: ['hamstrings'],
+  legs: ['quadriceps', 'calves'],
+  back: ['lower back', 'middle back', 'lats', 'abdominals'],
+  shoulders: ['shoulders', 'chest', 'biceps', 'triceps', 'forearms'],
+  neck: ['neck', 'traps'],
+}
+export const HOLD = 30, REST = 10 // seconds
+const LEVELS = { beginner: 1, intermediate: 2, expert: 3 }
+// One-sided stretches, detected from the dataset's instructions ("repeat on the other side", ...).
+const TWO_SIDES = /other side|each side|opposite side|switch sides|other leg|other arm|both sides|repeat with the other|repeat on the other/i
+export const twoSided = e => TWO_SIDES.test(e.instructions.join(' '))
+// Player steps: one-sided stretches are held once per side.
+export const stretchSteps = list => list.flatMap(e => twoSided(e) ? [{ ex: e, side: 'Left side' }, { ex: e, side: 'Right side' }] : [{ ex: e }])
+
+// Stretches for a zone at difficulty 1-3: the chosen level first, then easier ones, filling up to 5 min (10 for full body).
+// 'roller' is the foam-roller massage session (~10 min), whatever the level: only 3 are beginner.
+export function stretchSession(list, zone, level) {
+  const isStretch = e => e.category === 'stretching' && e.equipment !== 'foam roll' && LEVELS[e.level] <= level
+  const pick = muscles => list.filter(e => isStretch(e) && e.primaryMuscles.some(m => muscles.includes(m)))
+    .sort((a, b) => LEVELS[b.level] - LEVELS[a.level])
+  const budget = zone === 'full' || zone === 'roller' ? 600 : 300
+  let used = 0
+  const fits = e => { const s = (HOLD + REST) * (twoSided(e) ? 2 : 1); return used + s <= budget && (used += s) }
+  if (zone === 'roller') return list.filter(e => e.category === 'stretching' && e.equipment === 'foam roll').filter(fits)
+  if (zone !== 'full') return pick(STRETCH_ZONES[zone] ?? []).filter(fits)
+  // Round-robin over zones so full body is not all hamstrings.
+  const pools = Object.values(STRETCH_ZONES).map(pick), out = []
+  for (let i = 0; pools.some(p => p[i]); i++)
+    for (const p of pools) if (p[i] && !out.includes(p[i]) && fits(p[i])) out.push(p[i])
+  return out
+}
