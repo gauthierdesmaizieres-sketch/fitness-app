@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { MUSCLE_MAP, bodyData, filterExercises, progression, lastSets, muscleFromSlug, suggest, stretchSession, STRETCH_ZONES } from './lib.js'
+import { MUSCLE_MAP, bodyData, filterExercises, progression, lastSets, muscleFromSlug, suggest, stretchSession, stretchSteps, STRETCH_ZONES, HOLD, REST } from './lib.js'
 
 const exercises = JSON.parse(readFileSync(new URL('./data/exercises.json', import.meta.url)))
 
@@ -58,10 +58,12 @@ test('stretch sessions: right zone, level cap, length', () => {
     assert.ok(s.every(e => e.primaryMuscles.some(m => STRETCH_ZONES[zone].includes(m))), zone)
   }
   const full = stretchSession(exercises, 'full', 3)
-  assert.equal(full.length, 15)
+  const secs = stretchSteps(full).length * (HOLD + REST)
+  assert.ok(secs > 480 && secs <= 600, secs)
+  assert.ok(stretchSteps(stretchSession(exercises, 'hips', 1)).length * (HOLD + REST) <= 300)
   assert.equal(new Set(full).size, full.length)
   assert.equal(stretchSession(exercises, 'hamstrings', 3)[0].level, 'expert')
   const roller = stretchSession(exercises, 'roller', 1)
-  assert.equal(roller.length, 11)
+  assert.ok(roller.length >= 7 && stretchSteps(roller).length * (HOLD + REST) <= 600)
   assert.ok(roller.every(e => e.equipment === 'foam roll'))
 })

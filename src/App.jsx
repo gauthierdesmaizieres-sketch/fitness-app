@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Model from 'react-body-highlighter'
 import exercises from './data/exercises.json'
-import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets, suggest, WEIGHT_STEP, stretchSession, HOLD, REST } from './lib.js'
+import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets, suggest, WEIGHT_STEP, stretchSession, stretchSteps, twoSided, HOLD, REST } from './lib.js'
 
 const byId = new Map(exercises.map(e => [e.id, e]))
 const EQUIPMENT = [...new Set(exercises.map(e => e.equipment).filter(Boolean))].sort()
@@ -427,7 +427,7 @@ function History({ sessions, setSessions }) {
 
 const ZONE_LABELS = { full: 'Full body', hips: 'Hips', hamstrings: 'Hamstrings', legs: 'Quads & calves', back: 'Back', shoulders: 'Shoulders & chest', neck: 'Neck', roller: 'Foam roller' }
 const Dots = ({ n }) => <span className="dots" aria-label={`Level ${n} of 3`}>{[1, 2, 3].map(i => <i key={i} className={i <= n ? 'on' : ''} />)}</span>
-const mins = list => Math.round(list.length * (HOLD + REST) / 60)
+const mins = list => Math.max(1, Math.round(stretchSteps(list).length * (HOLD + REST) / 60))
 
 function Flex() {
   const [level, setLevel] = useStored('flexLevel', 1)
@@ -471,6 +471,7 @@ function beep(ctx, freq = 880) {
 function FlexSession({ zone }) {
   const [level] = useStored('flexLevel', 1)
   const list = useMemo(() => stretchSession(exercises, zone, level), [zone, level])
+  const steps = useMemo(() => stretchSteps(list), [list])
   // run: null = not started; phase 'rest' shows the upcoming stretch before its hold.
   const [run, setRun] = useState(null)
   const [ctx, setCtx] = useState(null)
@@ -481,10 +482,10 @@ function FlexSession({ zone }) {
       if (run.left > 1) return setRun({ ...run, left: run.left - 1 })
       if (run.phase === 'rest') { beep(ctx); return setRun({ ...run, phase: 'hold', left: HOLD }) }
       beep(ctx, 660)
-      setRun(run.i + 1 < list.length ? { ...run, i: run.i + 1, phase: 'rest', left: REST } : { ...run, done: true })
+      setRun(run.i + 1 < steps.length ? { ...run, i: run.i + 1, phase: 'rest', left: REST } : { ...run, done: true })
     }, 1000)
     return () => clearTimeout(t)
-  }, [run, ctx, list.length])
+  }, [run, ctx, steps.length])
 
   if (!ZONE_LABELS[zone] || !list.length) return <p className="soft narrow">No stretches here. <a href="#/flex">Back</a></p>
 
@@ -500,7 +501,7 @@ function FlexSession({ zone }) {
       <h1>{ZONE_LABELS[zone]}</h1>
       <p className="hint"><Dots n={level} /> {list.length} stretches · {HOLD}s each · ~{mins(list)} min</p>
       <ol className="stretch-list">
-        {list.map(e => <li key={e.id}><img {...photo(e.images[0])} alt="" loading="lazy" /><span>{e.name}</span></li>)}
+        {list.map(e => <li key={e.id}><img {...photo(e.images[0])} alt="" loading="lazy" /><span>{e.name}{twoSided(e) && <small> · both sides</small>}</span></li>)}
       </ol>
       <button className="big" onClick={start}>Start</button>
     </div>
@@ -514,12 +515,12 @@ function FlexSession({ zone }) {
     </div>
   )
 
-  const ex = list[run.i], total = run.phase === 'hold' ? HOLD : REST
+  const { ex, side } = steps[run.i], total = run.phase === 'hold' ? HOLD : REST
   const r = 54, c = 2 * Math.PI * r
   return (
     <div className="soft narrow player">
       <a href="#/flex" className="back">← Quit</a>
-      <p className="hint">{run.i + 1} / {list.length} · {run.phase === 'rest' ? 'Get ready' : zone === 'roller' ? 'Roll slowly' : 'Hold'}</p>
+      <p className="hint">{run.i + 1} / {steps.length} · {side && `${side} · `}{run.phase === 'rest' ? 'Get ready' : zone === 'roller' ? 'Roll slowly' : 'Hold'}</p>
       <div className="illu"><img key={ex.id} {...photo(ex.images[0])} alt={ex.name} /></div>
       <h2>{ex.name}</h2>
       <svg viewBox="0 0 120 120" className={`ring ${run.phase}`} role="timer" aria-label={`${run.left} seconds left`}>
