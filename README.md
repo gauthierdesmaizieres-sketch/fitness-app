@@ -32,9 +32,10 @@ They are generated locally on an NVIDIA GPU by [tools/manga/generate.py](tools/m
 cd tools/manga
 uv venv --python 3.12 .venv
 uv pip install --python .venv/Scripts/python.exe torch --index-url https://download.pytorch.org/whl/cu124
-uv pip install --python .venv/Scripts/python.exe diffusers transformers accelerate safetensors opencv-python-headless pillow
+uv pip install --python .venv/Scripts/python.exe diffusers transformers accelerate safetensors opencv-python-headless pillow rembg
 .venv/Scripts/python.exe generate.py Pullups Barbell_Squat   # some exercises
 .venv/Scripts/python.exe generate.py --all                    # all of them, skips images already done
+.venv/Scripts/python.exe generate.py --category stretching --first --style soft   # Flexibility module: pastel, golden hair, gym cut out
 ```
 
 ## Credits

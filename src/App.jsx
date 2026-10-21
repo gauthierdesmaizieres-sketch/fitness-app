@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Model from 'react-body-highlighter'
 import exercises from './data/exercises.json'
-import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets, suggest, WEIGHT_STEP } from './lib.js'
+import { MUSCLES, IMG_BASE, bodyData, muscleFromSlug, filterExercises, progression, lastSets, suggest, WEIGHT_STEP, stretchSession, HOLD, REST } from './lib.js'
 
 const byId = new Map(exercises.map(e => [e.id, e]))
 const EQUIPMENT = [...new Set(exercises.map(e => e.equipment).filter(Boolean))].sort()
@@ -45,6 +45,8 @@ export default function App() {
   else if (page === 'workout') view = <Workout id={id} {...store} />
   else if (page === 'history') view = <History {...store} />
   else if (page === 'progress') view = <Progress sessions={sessions} />
+  else if (page === 'flex' && id) view = <FlexSession zone={id} />
+  else if (page === 'flex') view = <Flex />
   else if (page === 'gym') view = <Gym gym={gym} setGym={setGym} />
   else view = <ExerciseList gym={gym} />
 
@@ -56,6 +58,7 @@ export default function App() {
         <nav>
           <a href="#/" className={tab === '' ? 'on' : ''}>Exercises</a>
           <a href="#/programs" className={tab === 'programs' ? 'on' : ''}>Programs</a>
+          <a href="#/flex" className={tab === 'flex' ? 'on' : ''}>Flexibility</a>
           <a href="#/progress" className={tab === 'progress' ? 'on' : ''}>Progress</a>
           <a href="#/history" className={tab === 'history' ? 'on' : ''}>History</a>
         </nav>
@@ -418,6 +421,117 @@ function History({ sessions, setSessions }) {
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+const ZONE_LABELS = { full: 'Full body', hips: 'Hips', hamstrings: 'Hamstrings', legs: 'Quads & calves', back: 'Back', shoulders: 'Shoulders & chest', neck: 'Neck', roller: 'Foam roller' }
+const Dots = ({ n }) => <span className="dots" aria-label={`Level ${n} of 3`}>{[1, 2, 3].map(i => <i key={i} className={i <= n ? 'on' : ''} />)}</span>
+const mins = list => Math.round(list.length * (HOLD + REST) / 60)
+
+function Flex() {
+  const [level, setLevel] = useStored('flexLevel', 1)
+  return (
+    <div className="soft narrow">
+      <h1>Flexibility</h1>
+      <div className="levels" role="radiogroup" aria-label="Difficulty">
+        {[1, 2, 3].map(n => (
+          <button key={n} role="radio" aria-checked={level === n} className={level === n ? 'on' : ''} onClick={() => setLevel(n)}>
+            <Dots n={n} /> {['Beginner', 'Intermediate', 'Advanced'][n - 1]}
+          </button>
+        ))}
+      </div>
+      <ul className="zones">
+        {Object.keys(ZONE_LABELS).map(z => {
+          const list = stretchSession(exercises, z, level)
+          return (
+            <li key={z}><a href={`#/flex/${z}`} className={z === 'full' ? 'zone full' : 'zone'}>
+              {list[0] && <img {...photo(list[0].images[0])} alt="" loading="lazy" />}
+              <strong>{ZONE_LABELS[z]}</strong>
+              <span>{list.length} stretches · ~{mins(list)} min</span>
+            </a></li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+function beep(ctx, freq = 880) {
+  navigator.vibrate?.(150)
+  if (!ctx) return
+  const o = ctx.createOscillator(), g = ctx.createGain()
+  o.frequency.value = freq
+  g.gain.setValueAtTime(0.2, ctx.currentTime)
+  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+  o.connect(g).connect(ctx.destination)
+  o.start(); o.stop(ctx.currentTime + 0.3)
+}
+
+function FlexSession({ zone }) {
+  const [level] = useStored('flexLevel', 1)
+  const list = useMemo(() => stretchSession(exercises, zone, level), [zone, level])
+  // run: null = not started; phase 'rest' shows the upcoming stretch before its hold.
+  const [run, setRun] = useState(null)
+  const [ctx, setCtx] = useState(null)
+
+  useEffect(() => {
+    if (!run || run.paused || run.done) return
+    const t = setTimeout(() => {
+      if (run.left > 1) return setRun({ ...run, left: run.left - 1 })
+      if (run.phase === 'rest') { beep(ctx); return setRun({ ...run, phase: 'hold', left: HOLD }) }
+      beep(ctx, 660)
+      setRun(run.i + 1 < list.length ? { ...run, i: run.i + 1, phase: 'rest', left: REST } : { ...run, done: true })
+    }, 1000)
+    return () => clearTimeout(t)
+  }, [run, ctx, list.length])
+
+  if (!ZONE_LABELS[zone] || !list.length) return <p className="soft narrow">No stretches here. <a href="#/flex">Back</a></p>
+
+  function start() {
+    // Audio must be created from a user gesture on mobile.
+    setCtx(c => c ?? new (window.AudioContext || window.webkitAudioContext)())
+    setRun({ i: 0, phase: 'rest', left: REST, paused: false, done: false })
+  }
+
+  if (!run) return (
+    <div className="soft narrow">
+      <a href="#/flex" className="back">← Flexibility</a>
+      <h1>{ZONE_LABELS[zone]}</h1>
+      <p className="hint"><Dots n={level} /> {list.length} stretches · {HOLD}s each · ~{mins(list)} min</p>
+      <ol className="stretch-list">
+        {list.map(e => <li key={e.id}><img {...photo(e.images[0])} alt="" loading="lazy" /><span>{e.name}</span></li>)}
+      </ol>
+      <button className="big" onClick={start}>Start</button>
+    </div>
+  )
+
+  if (run.done) return (
+    <div className="soft narrow player">
+      <h1>Well done!</h1>
+      <p className="hint">{list.length} stretches · ~{mins(list)} min</p>
+      <a href="#/flex" className="btn big">Back to zones</a>
+    </div>
+  )
+
+  const ex = list[run.i], total = run.phase === 'hold' ? HOLD : REST
+  const r = 54, c = 2 * Math.PI * r
+  return (
+    <div className="soft narrow player">
+      <a href="#/flex" className="back">← Quit</a>
+      <p className="hint">{run.i + 1} / {list.length} · {run.phase === 'rest' ? 'Get ready' : zone === 'roller' ? 'Roll slowly' : 'Hold'}</p>
+      <div className="illu"><img key={ex.id} {...photo(ex.images[0])} alt={ex.name} /></div>
+      <h2>{ex.name}</h2>
+      <svg viewBox="0 0 120 120" className={`ring ${run.phase}`} role="timer" aria-label={`${run.left} seconds left`}>
+        <circle cx="60" cy="60" r={r} className="track" />
+        <circle cx="60" cy="60" r={r} className="bar" strokeDasharray={c} strokeDashoffset={c * (1 - run.left / total)} />
+        <text x="60" y="70" textAnchor="middle">{run.left}</text>
+      </svg>
+      <div className="row center">
+        <button className="ghost" onClick={() => setRun({ ...run, paused: !run.paused })}>{run.paused ? 'Resume' : 'Pause'}</button>
+        <button className="ghost" onClick={() => setRun({ ...run, left: 1 })}>Skip →</button>
+      </div>
+      <details><summary>How to</summary><ol>{ex.instructions.map((t, i) => <li key={i}>{t}</li>)}</ol></details>
     </div>
   )
 }
