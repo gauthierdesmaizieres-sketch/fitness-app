@@ -1,5 +1,5 @@
 :root {
-  --bg: #111214; --panel: #1a1c20; --line: #2a2d33; --text: #e9eaec; --muted: #8b8f98;
+  --bg: #201517; --panel: #1a1c20; --line: #2a2d33; --text: #e9eaec; --muted: #8b8f98;
   --accent: #d4ff3a; --accent-ink: #111214; --danger: #ff6b5b;
   color-scheme: dark;
   font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -128,7 +128,7 @@ tr.done td:first-child { color: var(--accent); font-weight: 700; }
 
 /* Flexibility module: soft pastel theme ("C · Doux"), scoped so the rest of the app stays dark. */
 main:has(> .soft) { max-width: none; background: #EEF3F8; min-height: 80vh; }
-.soft { --bg: #EEF3F8; --panel: #fff; --line: #d3dfea; --text: #2E3A4B; --muted: #6b7a8f; --accent: #8DB8DE; --accent-ink: #2E3A4B;
+.soft { --bg: #f6eef0; --panel: #fff; --line: #d3dfea; --text: #2E3A4B; --muted: #6b7a8f; --accent: #8DB8DE; --accent-ink: #2E3A4B;
   color-scheme: light; color: var(--text); }
 .soft h2 { color: var(--text); text-transform: none; letter-spacing: 0; font-size: 1.2rem; text-align: center; }
 .soft button, .soft .btn { border-radius: 18px; }

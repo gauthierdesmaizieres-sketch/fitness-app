@@ -3,16 +3,16 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: './', // works both locally and under /fitness-app/ on GitHub Pages
+  base: './', // works both locally and under /stamina/ on GitHub Pages
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Fitness',
-        short_name: 'Fitness',
-        theme_color: '#111214',
-        background_color: '#111214',
+        name: 'Stamina',
+        short_name: 'Stamina',
+        theme_color: '#201517',
+        background_color: '#201517',
         display: 'standalone',
         icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
       },

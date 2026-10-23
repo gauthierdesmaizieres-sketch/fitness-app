@@ -3,7 +3,7 @@
 Installable web app (PWA) to browse exercises by muscle, build programs, log workouts and track progress.
 Everything is stored in the browser (localStorage); no account, no server.
 
-**On your phone**: open https://gauthierdesmaizieres-sketch.github.io/fitness-app/ and use "Add to Home screen". Every push to `main` redeploys it.
+**On your phone**: open https://gauthierdesmaizieres-sketch.github.io/stamina/ and use "Add to Home screen". Every push to `main` redeploys it.
 
 ```bash
 npm install
