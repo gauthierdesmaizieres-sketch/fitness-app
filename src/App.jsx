@@ -54,7 +54,7 @@ export default function App() {
   return (
     <>
       <header className="top">
-        <a href="#/" className="brand">FITNESS</a>
+        <a href="#/" className="brand">STAMINA</a>
         <nav>
           <a href="#/" className={tab === '' ? 'on' : ''}>Exercises</a>
           <a href="#/programs" className={tab === 'programs' ? 'on' : ''}>Programs</a>
